@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eksplorasi Persamaan Garis Lurus</title>
+  <style>
+:root {
+  color-scheme: light;
+  font: 14px/1.35 system-ui, sans-serif;
+  color: #182338;
+  --blue: #245dcd;
+  --green: #087752;
+  --border: #d6deeb;
+  --math: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #fff; }
+.app { container-type: inline-size; max-width: 1040px; margin-inline: auto; padding: 6px; }
+.workspace { display: grid; grid-template-columns: clamp(164px, 21cqi, 195px) minmax(0, 1fr); gap: 6px; align-items: stretch; }
+.panel { display: flex; flex-direction: column; gap: 10px; padding: 10px; background: #f8faff; border: 1px solid var(--border); border-radius: 10px; min-width: 0; }
+.formula-card { display: grid; gap: 4px; justify-items: center; padding: 7px 4px; background: #fff; border: 1px solid #c2cfe4; border-radius: 7px; text-align: center; }
+.formula-card > span { font-size: 10px; letter-spacing: .06em; color: #46546c; }
+.general { font: 24px/1.1 var(--math); }
+#equation { display: block; font: 18px/1.25 var(--math); overflow-wrap: anywhere; }
+.m-color, .m-control b { color: var(--blue); }
+.c-color, .c-control b { color: var(--green); }
+.parameter { --accent: var(--blue); min-width: 0; }
+.c-control { --accent: var(--green); }
+.parameter-heading { display: flex; align-items: center; justify-content: space-between; gap: 5px; font-size: 12px; }
+.parameter-heading b { font: italic 17px var(--math); margin-inline-end: 2px; }
+input[type=number] { width: 62px; padding: 4px 2px 4px 5px; border: 1px solid var(--border); border-radius: 5px; font: inherit; background: #fff; }
+input[type=range] { width: 100%; margin: 5px 0 0; display: block; accent-color: var(--accent); }
+.range-labels { display: flex; justify-content: space-between; font-size: 10px; color: #526078; }
+.error { margin: 3px 0 0; color: #a72020; font-size: 11px; }
+.error:empty { display: none; }
+.options { display: grid; gap: 5px; font-size: 12px; }
+.options label { display: flex; align-items: center; gap: 5px; }
+.options input { margin: 0; accent-color: var(--blue); }
+#reset { margin-top: auto; padding: 5px; background: #fff; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-size: 12px; color: inherit; cursor: pointer; }
+#reset:hover { background: #eaf1ff; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.graph-panel { display: grid; align-items: center; min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+#graph { display: block; width: 100%; aspect-ratio: 752 / 668; }
+.tick { fill: #48566b; font-size: 14px; }
+.axis-symbol { color: #182338; font: 23px/1 var(--math); }
+.delta { fill: #000; font: italic 17px var(--math); pointer-events: none; }
+.intercept-label { fill: #086545; font: 21px var(--math); pointer-events: none; }
+.handle { cursor: grab; touch-action: none; outline: none; }
+.handle:active, .triangle-guide:active { cursor: grabbing; }
+.triangle-guide { cursor: grab; touch-action: none; }
+.handle:focus-visible .handle-dot { stroke: #153568; stroke-width: 4; }
+@container (max-width: 485px) {
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .formula-card { grid-column: 1 / -1; }
+  #reset { margin-top: 0; }
+}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="workspace">
+      <aside class="panel" aria-label="Pengaturan garis">
+        <div class="formula-card"><span>BENTUK UMUM</span><div class="general"><math xmlns="http://www.w3.org/1998/Math/MathML" aria-label="y sama dengan m x ditambah c"><mi>y</mi><mo>=</mo><mi class="m-color">m</mi><mi>x</mi><mo>+</mo><mi class="c-color">c</mi></math></div><output id="equation" aria-live="polite">y = 0</output></div>
+        <section class="parameter m-control">
+          <div class="parameter-heading"><label for="m-number"><b>m</b> <span>Gradien</span></label><input id="m-number" type="number" min="-10" max="10" step="any" value="0" inputmode="decimal" aria-describedby="m-error"></div>
+          <input id="m-slider" type="range" min="-10" max="10" step="0.1" value="0" aria-label="Slider gradien m">
+          <div class="range-labels"><span>−10</span><span>0</span><span>10</span></div>
+          <p class="error" id="m-error" aria-live="polite"></p>
+        </section>
+        <section class="parameter c-control">
+          <div class="parameter-heading"><label for="c-number"><b>c</b> <span>Konstanta</span></label><input id="c-number" type="number" min="-10" max="10" step="any" value="0" inputmode="decimal" aria-describedby="c-error"></div>
+          <input id="c-slider" type="range" min="-10" max="10" step="0.1" value="0" aria-label="Slider konstanta c">
+          <div class="range-labels"><span>−10</span><span>0</span><span>10</span></div>
+          <p class="error" id="c-error" aria-live="polite"></p>
+        </section>
+        <div class="options"><label><input type="checkbox" id="show-intercept" checked> Titik potong sumbu y</label><label><input type="checkbox" id="show-triangle"> Segitiga gradien</label></div>
+        <button id="reset" type="button">&#8634; &nbsp; Reset parameter</button>
+      </aside>
+      <section class="graph-panel" aria-label="Grafik garis lurus">
+        <svg id="graph" viewBox="-36 4 752 668" role="group" aria-labelledby="graph-title graph-desc">
+          <title id="graph-title">Grafik y = 0</title>
+          <desc id="graph-desc">Bidang koordinat dari negatif sepuluh hingga sepuluh. Saat segitiga gradien ditampilkan, kedua titiknya dapat digeser sepanjang garis dengan penunjuk atau tombol panah. Gunakan Tab untuk memilih titik.</desc>
+          <defs>
+            <clipPath id="plot-clip"><rect x="42" y="42" width="596" height="596" rx="5"/></clipPath>
+          </defs>
+          <g id="grid"></g>
+          <g id="triangle-shape" clip-path="url(#plot-clip)"></g>
+          <g clip-path="url(#plot-clip)"><path id="line" fill="none" stroke="#2866df" stroke-width="3.5"/></g>
+          <g id="ticks"></g>
+          <g id="intercept"></g>
+          <g id="triangle-labels"></g>
+          <g id="triangle-guides" clip-path="url(#plot-clip)"></g>
+          <g id="handles"></g>
+        </svg>
+      </section>
+    </div>
+  </main>
+  <script>
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+const svg = $("graph");
+const ns = svg.namespaceURI;
+const left = 42;
+const right = 638;
+const center = (left + right) / 2;
+const unit = (right - left) / 20;
+const viewport = svg.viewBox.baseVal;
+const sx = (x) => center + x * unit;
+const sy = (y) => center - y * unit;
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const parameters = { m: 0, c: 0 };
+const startPositions = [0.35, 0.65];
+const positions = [...startPositions];
+const handles = [];
+const guides = [];
+const parameterSnap = 0.11;
+const gridSnap = 0.22;
+const tickLabels = [];
+let drag = null;
+
+function makeSvg(parent, type, attributes, content) {
+  const node = document.createElementNS(ns, type);
+  for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
+  if (content !== undefined) node.textContent = content;
+  parent.append(node);
+  return node;
+}
+
+const shortNumber = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 6, useGrouping: false });
+function format(value) {
+  return shortNumber.format(Math.abs(value) < 1e-12 ? 0 : value).replace("-", "−");
+}
+
+function axisSymbol(letter, x, y) {
+  const box = makeSvg($("ticks"), "foreignObject", { x, y, width: 27, height: 28 });
+  const mathNS = "http://www.w3.org/1998/Math/MathML";
+  const math = document.createElementNS(mathNS, "math");
+  const symbol = document.createElementNS(mathNS, "mi");
+  math.setAttribute("class", "axis-symbol");
+  symbol.textContent = letter;
+  math.append(symbol);
+  box.append(math);
+  tickLabels.push(box);
+}
+
+function drawAxes() {
+  const grid = $("grid");
+  const ticks = $("ticks");
+  const gridLines = makeSvg(grid, "g", { "clip-path": "url(#plot-clip)", stroke: "#e1e7ef" });
+  for (let value = -10; value <= 10; value++) {
+    makeSvg(gridLines, "path", { d: "M" + sx(value) + " " + left + "V" + right + "M" + left + " " + sy(value) + "H" + right });
+    if (value === 0 || value % 2 !== 0) continue;
+    tickLabels.push(makeSvg(ticks, "text", { x: sx(value), y: center + 17, "text-anchor": "middle", class: "tick" }, format(value)));
+    tickLabels.push(makeSvg(ticks, "text", { x: center - 8, y: sy(value) + 5, "text-anchor": "end", class: "tick" }, format(value)));
+  }
+  tickLabels.push(makeSvg(ticks, "text", { x: center - 7, y: center + 17, "text-anchor": "end", class: "tick" }, "0"));
+  makeSvg(grid, "rect", { x: left, y: left, width: right - left, height: right - left, rx: 5, fill: "none", stroke: "#d6deeb" });
+  makeSvg(grid, "path", {
+    d: "M" + left + " 340H649 M642 335l7 5-7 5 M340 " + right + "V31 M335 38l5-7 5 7",
+    fill: "none", stroke: "#59677c", "stroke-width": 1.5
+  });
+  axisSymbol("x", 656, 326);
+  axisSymbol("y", 350, 10);
+}
+
+function visibleRange() {
+  const { m, c } = parameters;
+  if (m === 0) return [-10, 10];
+  const ends = [(-10 - c) / m, (10 - c) / m].sort((a, b) => a - b);
+  return [Math.max(-10, ends[0]), Math.min(10, ends[1])];
+}
+
+function equationText() {
+  const { m, c } = parameters;
+  const exact = (value) => String(value).replaceAll("-", "−");
+  if (m === 0) return "y = " + exact(c);
+  const term = m === 1 ? "x" : m === -1 ? "−x" : exact(m) + "x";
+  return "y = " + term + (c === 0 ? "" : (c > 0 ? " + " : " − ") + exact(Math.abs(c)));
+}
+
+function initHandle(index) {
+  const id = index === 0 ? "A" : "B";
+  const handle = makeSvg($("handles"), "g", {
+    class: "handle", role: "slider", tabindex: 0, "aria-label": "Posisi titik " + id
+  });
+  makeSvg(handle, "title", {}, "Geser titik " + id + " sepanjang garis");
+  makeSvg(handle, "circle", { r: 15, fill: "transparent" });
+  makeSvg(handle, "circle", { r: 5, fill: "#245dcd", stroke: "#fff", "stroke-width": 1.5, class: "handle-dot" });
+  bindDrag(handle, index, "point");
+  handle.addEventListener("keydown", (event) => {
+    const direction = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    movePoint(index, pointAt(index)[0] + direction * (event.shiftKey ? 1 : 0.25));
+  });
+  handles.push(handle);
+}
+
+function bindDrag(target, index, kind) {
+  target.addEventListener("pointerdown", (event) => {
+    if (drag || event.button !== 0) return;
+    const [x, y] = graphPoint(event);
+    drag = { index, kind, pointer: event.pointerId, x, y, start: pointAt(index)[0] };
+    if (kind === "point") target.focus({ preventScroll: true });
+    target.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+  target.addEventListener("lostpointercapture", (event) => {
+    if (drag?.pointer === event.pointerId) drag = null;
+  });
+}
+
+function graphPoint(event) {
+  const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
+  return [(point.x - center) / unit, (center - point.y) / unit];
+}
+
+function pointAt(index, range = visibleRange()) {
+  const x = range[0] + positions[index] * (range[1] - range[0]);
+  return [x, parameters.m * x + parameters.c];
+}
+
+function snapToGrid(x, kind, min, max, other, gap) {
+  const { m, c } = parameters;
+  const xCandidate = Math.round(x);
+  const y = m * x + c;
+  const yCandidate = m === 0 ? NaN : (Math.round(y) - c) / m;
+  const candidates = kind === "horizontal" ? [yCandidate, xCandidate]
+    : kind === "vertical" ? [xCandidate] : [xCandidate, yCandidate];
+  const nearby = candidates.filter((candidate, index) => {
+    const scale = kind === "vertical" ? 1
+      : kind === "horizontal" && index === 0 ? Math.abs(m) : Math.hypot(1, m);
+    return candidate >= min && candidate <= max && Math.abs(candidate - other) >= gap
+      && Math.abs(candidate - x) * scale <= gridSnap;
+  });
+  if (kind === "point") nearby.sort((a, b) => Math.abs(a - x) - Math.abs(b - x));
+  return nearby[0] ?? x;
+}
+
+function movePoint(index, x, kind) {
+  const [min, max] = visibleRange();
+  const gap = Math.min(0.45 / Math.hypot(1, parameters.m), (max - min) / 4);
+  const other = pointAt(1 - index, [min, max])[0];
+  const bounded = clamp(x, min, max);
+  const proposed = kind ? snapToGrid(bounded, kind, min, max, other, gap) : bounded;
+  const side = Math.sign(proposed - other) || Math.sign(pointAt(index)[0] - other);
+  const sideWithRoom = other + side * gap >= min && other + side * gap <= max ? side : -side;
+  const chosen = Math.abs(proposed - other) >= gap ? proposed : other + sideWithRoom * gap;
+  positions[index] = clamp((chosen - min) / (max - min), 0, 1);
+  drawGraph();
+}
+
+svg.addEventListener("pointermove", (event) => {
+  if (drag?.pointer !== event.pointerId) return;
+  const [x, y] = graphPoint(event);
+  const { m } = parameters;
+  const dx = x - drag.x;
+  const dy = y - drag.y;
+  const projection = (dx + m * dy) / (1 + m * m);
+  const change = drag.kind === "vertical" ? dx
+    : drag.kind === "horizontal" && Math.abs(m) >= 0.25 ? dy / m : projection;
+  movePoint(drag.index, drag.start + change, drag.kind);
+});
+
+function deltaLabel(parent, variable, value, x, y, anchor) {
+  const label = makeSvg(parent, "text", { x, y, "text-anchor": anchor, class: "delta" });
+  makeSvg(label, "tspan", { "font-style": "normal" }, "Δ");
+  makeSvg(label, "tspan", {}, variable);
+  const rounded = Math.round(Math.abs(value) * 10) / 10;
+  const magnitude = rounded.toFixed(1).replace(".", ",");
+  const display = (value < 0 && rounded !== 0 ? "−" : "") + magnitude;
+  makeSvg(label, "tspan", { "font-style": "normal" }, " = " + display);
+  return label;
+}
+
+function drawTriangle(range) {
+  const shape = $("triangle-shape");
+  const labels = $("triangle-labels");
+  shape.replaceChildren();
+  labels.replaceChildren();
+  const show = $("show-triangle").checked;
+  $("handles").style.display = show ? "" : "none";
+  $("triangle-guides").style.display = show ? "" : "none";
+  if (!show) return [];
+
+  const a = pointAt(0, range);
+  const b = pointAt(1, range);
+  const [ax, ay, bx, by] = [sx(a[0]), sy(a[1]), sx(b[0]), sy(b[1])];
+  const dx = b[0] - a[0];
+  const dy = parameters.m * dx;
+  const below = dy > 0 || (dy === 0 && dx > 0);
+  makeSvg(shape, "path", {
+    d: "M" + ax + " " + ay + "H" + bx + "V" + by + "Z",
+    fill: "#2866df", "fill-opacity": 0.10
+  });
+  const horizontalY = ay + (below ? 17 : -6);
+  const dxLabel = deltaLabel(labels, "x", dx, (ax + bx) / 2, horizontalY, "middle");
+  const dyLabel = deltaLabel(labels, "y", dy, bx + (below ? 9 : -9),
+    (ay + by) / 2 + 5, below ? "start" : "end");
+
+  const dxBounds = dxLabel.getBBox();
+  const labelX = Number(dxLabel.getAttribute("x"));
+  dxLabel.setAttribute("x", labelX + clamp(dxBounds.x, viewport.x + 5, viewport.x + viewport.width - 5 - dxBounds.width) - dxBounds.x);
+  // If the legs are very short, move the horizontal label away from the vertical label.
+  const dxBox = dxLabel.getBBox();
+  const dyBox = dyLabel.getBBox();
+  if (overlap(dxBox, dyBox, 2)) {
+    dxLabel.setAttribute("y", below
+      ? Math.max(horizontalY, dyBox.y + dyBox.height + 16)
+      : Math.min(horizontalY, dyBox.y - 5));
+  }
+
+  makeSvg(shape, "path", {
+    d: "M" + ax + " " + ay + "H" + bx + "V" + by,
+    fill: "none", stroke: "#49648e", "stroke-width": 1.6, "stroke-dasharray": "5 4"
+  });
+  guides[0].setAttribute("d", "M" + ax + " " + ay + "H" + bx);
+  guides[1].setAttribute("d", "M" + bx + " " + ay + "V" + by);
+  for (const [index, point] of [a, b].entries()) {
+    const handle = handles[index];
+    handle.setAttribute("transform", "translate(" + sx(point[0]) + " " + sy(point[1]) + ")");
+    handle.setAttribute("aria-valuemin", range[0]);
+    handle.setAttribute("aria-valuemax", range[1]);
+    handle.setAttribute("aria-valuenow", point[0]);
+    handle.setAttribute("aria-valuetext", "(" + format(point[0]) + ", " + format(point[1]) + ")");
+  }
+  return [dxLabel, dyLabel];
+}
+
+function overlap(a, b, gap) {
+  return a.x < b.x + b.width + gap && a.x + a.width + gap > b.x
+    && a.y < b.y + b.height + gap && a.y + a.height + gap > b.y;
+}
+
+function drawIntercept(deltaLabels, range) {
+  const layer = $("intercept");
+  layer.replaceChildren();
+  if (!$("show-intercept").checked) return;
+
+  const { m, c } = parameters;
+  const y = sy(c);
+  makeSvg(layer, "circle", { cx: center, cy: y, r: 5.5, fill: "#087752", stroke: "#fff", "stroke-width": 1.5 });
+  const label = makeSvg(layer, "text", { class: "intercept-label", x: 0, y: 0 },
+    "(0, " + format(c) + ")");
+  const size = label.getBBox();
+  const obstacles = [...deltaLabels, ...tickLabels].map((element) => element.getBBox());
+  if (deltaLabels.length) {
+    for (const index of [0, 1]) {
+      const [px, py] = pointAt(index, range);
+      obstacles.push({ x: sx(px) - 7, y: sy(py) - 7, width: 14, height: 14 });
+    }
+  }
+
+  const sides = m > 0 ? [[-1, -1], [1, 1]]
+    : m < 0 ? [[1, -1], [-1, 1]]
+    : [[1, -1], [-1, -1], [1, 1], [-1, 1]];
+  // Use the same nearby position for each slope direction until it meets another label or the edge.
+  for (const offset of [0, 10, 20, 34, 50, 74, 110, 150]) {
+    for (const [horizontal, vertical] of sides) {
+      for (const [extraX, extraY] of [[offset, 0], [0, offset]]) {
+        const x = center + horizontal * (12 + extraX) - (horizontal < 0 ? size.width : 0);
+        const top = y + vertical * (9 + extraY) - (vertical < 0 ? size.height : 0);
+        const box = { x, y: top, width: size.width, height: size.height };
+        if (x < viewport.x + 4 || x + size.width > viewport.x + viewport.width - 4
+          || top < viewport.y + 4 || top + size.height > viewport.y + viewport.height - 4
+          || obstacles.some((other) => overlap(box, other, 4))) continue;
+        label.setAttribute("x", x - size.x);
+        label.setAttribute("y", top - size.y);
+        return;
+      }
+    }
+  }
+  label.remove();
+}
+
+function drawGraph() {
+  const range = visibleRange();
+  const { m, c } = parameters;
+  const y1 = sy(clamp(m * range[0] + c, -10, 10));
+  const y2 = sy(clamp(m * range[1] + c, -10, 10));
+  $("line").setAttribute("d", "M" + sx(range[0]) + " " + y1 + "L" + sx(range[1]) + " " + y2);
+  const labels = drawTriangle(range);
+  drawIntercept(labels, range);
+}
+
+function update() {
+  const equation = equationText();
+  const output = $("equation");
+  output.replaceChildren();
+  for (const part of equation.split(/([xy])/)) {
+    if (part === "x" || part === "y") {
+      const variable = document.createElement("i");
+      variable.textContent = part;
+      output.append(variable);
+    } else {
+      output.append(part);
+    }
+  }
+  $("graph-title").textContent = "Grafik " + equation;
+  drawGraph();
+}
+
+function clearError(key) {
+  $(key + "-error").textContent = "";
+  $(key + "-number").removeAttribute("aria-invalid");
+}
+
+function snapParameter(value) {
+  const integer = Math.round(value);
+  return Math.abs(value - integer) <= parameterSnap ? integer : value;
+}
+
+for (const key of ["m", "c"]) {
+  const number = $(key + "-number");
+  const slider = $(key + "-slider");
+  number.addEventListener("input", () => {
+    if (number.validity.badInput || number.value === "" || !number.validity.valid) {
+      $(key + "-error").textContent = "Masukkan angka dari −10 sampai 10.";
+      number.setAttribute("aria-invalid", "true");
+      return;
+    }
+    clearError(key);
+    parameters[key] = number.valueAsNumber;
+    slider.value = String(parameters[key]);
+    update();
+  });
+  number.addEventListener("change", () => {
+    if (number.value === "" || !number.validity.valid) return;
+    parameters[key] = snapParameter(number.valueAsNumber);
+    number.value = String(parameters[key]);
+    slider.value = number.value;
+    update();
+  });
+
+  let pointer = null;
+  slider.addEventListener("pointerdown", (event) => { pointer = event.pointerId; });
+  const stopDragging = (event) => {
+    if (pointer === event.pointerId) pointer = null;
+  };
+  window.addEventListener("pointerup", stopDragging);
+  window.addEventListener("pointercancel", stopDragging);
+  window.addEventListener("blur", () => { pointer = null; });
+  slider.addEventListener("input", () => {
+    clearError(key);
+    const value = slider.valueAsNumber;
+    parameters[key] = pointer === null ? value : snapParameter(value);
+    slider.value = String(parameters[key]);
+    number.value = slider.value;
+    update();
+  });
+}
+$("show-intercept").addEventListener("change", drawGraph);
+$("show-triangle").addEventListener("change", drawGraph);
+$("reset").addEventListener("click", () => {
+  for (const key of ["m", "c"]) {
+    parameters[key] = 0;
+    $(key + "-number").value = "0";
+    $(key + "-slider").value = "0";
+    clearError(key);
+  }
+  positions.splice(0, positions.length, ...startPositions);
+  update();
+});
+
+drawAxes();
+for (const [index, kind] of ["horizontal", "vertical"].entries()) {
+  const guide = makeSvg($("triangle-guides"), "path", {
+    class: "triangle-guide", fill: "none", stroke: "transparent", "stroke-width": 16
+  });
+  makeSvg(guide, "title", {}, "Geser garis bantu " + (kind === "horizontal" ? "horizontal" : "vertikal"));
+  guides.push(guide);
+  bindDrag(guide, index, kind);
+}
+initHandle(0);
+initHandle(1);
+update();
+  </script>
+</body>
+</html>
